@@ -66,13 +66,19 @@ public class EmployeService {
         if (e == null) return;
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
         System.out.println("Tâches réalisées par : " + e.getNom() + " " + e.getPrenom());
-        // Récupérer via la relation
-        Employe emp = findById(e.getId());
-        if (emp == null || emp.getEmployeTaches() == null) return;
-        for (EmployeTache et : emp.getEmployeTaches()) {
-            String debut = et.getDateDebutReelle() == null ? "N/A" : sdf.format(et.getDateDebutReelle());
-            String fin = et.getDateFinReelle() == null ? "N/A" : sdf.format(et.getDateFinReelle());
-            System.out.println(" - " + et.getTache().getNom() + " | Début: " + debut + " | Fin: " + fin);
+        // Récupérer les employeTaches via une requête dans une session pour éviter LazyInitializationException
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            List<EmployeTache> ets = session.createQuery("from EmployeTache et where et.employe.id = :eid", EmployeTache.class)
+                    .setParameter("eid", e.getId())
+                    .list();
+            for (EmployeTache et : ets) {
+                String debut = et.getDateDebutReelle() == null ? "N/A" : sdf.format(et.getDateDebutReelle());
+                String fin = et.getDateFinReelle() == null ? "N/A" : sdf.format(et.getDateFinReelle());
+                String tnom = et.getTache() == null ? "N/A" : et.getTache().getNom();
+                System.out.println(" - " + tnom + " | Début: " + debut + " | Fin: " + fin);
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
     }
 
@@ -80,11 +86,16 @@ public class EmployeService {
     public void afficherProjetsGeresParEmploye(Employe e) {
         if (e == null) return;
         System.out.println("Projets gérés par : " + e.getNom() + " " + e.getPrenom());
-        Employe emp = findById(e.getId());
-        if (emp == null || emp.getProjets() == null) return;
         SimpleDateFormat sdf = new SimpleDateFormat("dd MMMM yyyy");
-        for (Projet p : emp.getProjets()) {
-            System.out.println("Projet : " + p.getId() + "\tNom : " + p.getNom() + "\tDate début : " + sdf.format(p.getDateDebut()));
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            List<Projet> projets = session.createQuery("from Projet p where p.chefProjet.id = :eid", Projet.class)
+                    .setParameter("eid", e.getId())
+                    .list();
+            for (Projet p : projets) {
+                System.out.println("Projet : " + p.getId() + "\tNom : " + p.getNom() + "\tDate début : " + (p.getDateDebut() == null ? "N/A" : sdf.format(p.getDateDebut())));
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
     }
 }

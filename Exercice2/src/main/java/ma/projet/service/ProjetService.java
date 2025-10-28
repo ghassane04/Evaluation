@@ -63,12 +63,18 @@ public class ProjetService {
     // Afficher la liste des tâches planifiées pour un projet.
     public void afficherTachesPlanifiees(Projet projet) {
         if (projet == null) return;
-        Projet p = findById(projet.getId());
-        if (p == null || p.getTaches() == null) return;
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-        System.out.println("Liste des tâches planifiées pour le projet : " + p.getNom());
-        for (Tache t : p.getTaches()) {
-            System.out.println(" - " + t.getNom() + " | Début prévu: " + (t.getDateDebut()==null?"N/A":sdf.format(t.getDateDebut())) + " | Fin prévue: " + (t.getDateFin()==null?"N/A":sdf.format(t.getDateFin())));
+        System.out.println("Liste des tâches planifiées pour le projet : " + projet.getNom());
+        // Récupérer les tâches dans une session pour éviter LazyInitializationException
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            List<Tache> taches = session.createQuery("from Tache t where t.projet.id = :pid", Tache.class)
+                    .setParameter("pid", projet.getId())
+                    .list();
+            for (Tache t : taches) {
+                System.out.println(" - " + t.getNom() + " | Début prévu: " + (t.getDateDebut() == null ? "N/A" : sdf.format(t.getDateDebut())) + " | Fin prévue: " + (t.getDateFin() == null ? "N/A" : sdf.format(t.getDateFin())));
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
     }
 
@@ -76,7 +82,7 @@ public class ProjetService {
     public void afficherTachesRealiseesAvecDatesReelles(Projet projet) {
         if (projet == null) return;
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-        System.out.println("Projet : " + projet.getId() + "\t Nom : " + projet.getNom() + "\t Date début : " + (projet.getDateDebut()==null?"N/A":new SimpleDateFormat("dd MMMM yyyy").format(projet.getDateDebut())));
+        System.out.println("Projet : " + projet.getId() + "\t Nom : " + projet.getNom() + "\t Date début : " + (projet.getDateDebut() == null ? "N/A" : new SimpleDateFormat("dd MMMM yyyy").format(projet.getDateDebut())));
         System.out.println("Liste des tâches:");
         EmployeTacheService ets = new EmployeTacheService();
         List<EmployeTache> all = ets.getAll();
@@ -84,8 +90,8 @@ public class ProjetService {
             if (et == null || et.getTache() == null) continue;
             if (et.getTache().getProjet() != null && et.getTache().getProjet().getId() == projet.getId()) {
                 String nom = et.getTache().getNom();
-                String debut = et.getDateDebutReelle()==null?"N/A":sdf.format(et.getDateDebutReelle());
-                String fin = et.getDateFinReelle()==null?"N/A":sdf.format(et.getDateFinReelle());
+                String debut = et.getDateDebutReelle() == null ? "N/A" : sdf.format(et.getDateDebutReelle());
+                String fin = et.getDateFinReelle() == null ? "N/A" : sdf.format(et.getDateFinReelle());
                 System.out.printf("%3d  %-15s %12s %15s\n", et.getTache().getId(), nom, debut, fin);
             }
         }
